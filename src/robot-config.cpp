@@ -19,14 +19,15 @@ controller Controller1 = controller(primary);
 
 // VEXcode generated functions
 // define variables used for controlling motors based on controller inputs
-bool DrivetrainLNeedsToBeStopped_Controller1 = true;
-bool DrivetrainRNeedsToBeStopped_Controller1 = true;
+bool stopLeft = true;
+bool stopRight = true;
+
+bool brakable = false;
 
 // define a task that will handle monitoring inputs from Controller1
 int rc_auto_loop_callback_Controller1() {
   Brain.Screen.render(true, false);
 
-  Drivetrain.setStopping(brake);
   Claw.setStopping(hold);
   Arm.setStopping(hold);
   Arm.setVelocity(20, percent);
@@ -34,21 +35,25 @@ int rc_auto_loop_callback_Controller1() {
   // process the controller input every 20 milliseconds
   // update the motors based on the input values
   while(true) {
+    // dynamic braking types
     if(Controller1.ButtonR1.pressing())
     {
       Drivetrain.setStopping(brake);
+      brakable = true;
     }
     else if(Controller1.ButtonR2.pressing())
     {
       Drivetrain.setStopping(hold);
+      brakable = true;
     }
     else
     {
       Drivetrain.setStopping(coast);
+      brakable = false;
     }
 
 
-    // do claw manipulation
+    // claw manipulation
     if(Controller1.ButtonRight.pressing() && Controller1.ButtonLeft.pressing())
     {
       Claw.stop();
@@ -65,7 +70,7 @@ int rc_auto_loop_callback_Controller1() {
       Claw.stop();    
     }
 
-    // do arm manipulation
+    // arm manipulation
     if(Controller1.ButtonUp.pressing() && Controller1.ButtonDown.pressing())
     {
       Arm.stop();
@@ -82,12 +87,9 @@ int rc_auto_loop_callback_Controller1() {
       Arm.stop();
     }
 
-    int drivetrainLeftSideSpeed = 0;
-    int drivetrainRightSideSpeed = 0;
-    // if forwards / backwards is enabled
+    int leftWheelSpeed = 0;
+    int rightWheelSpeed = 0;
     // calculate the drivetrain motor velocities from the controller joystick axies
-    // left = Axis3
-    // right = Axis2
     int x = Controller1.Axis3.position();
     if(x > 0){
       x -= 1;
@@ -96,9 +98,8 @@ int rc_auto_loop_callback_Controller1() {
     }
     x *= 0.8;
 
-    // x = (0.2 * x) + (0.8 * (x * x));
-    drivetrainLeftSideSpeed = x;
-    drivetrainRightSideSpeed = x;
+    leftWheelSpeed = x;
+    rightWheelSpeed = x;
   
 
     // left side 
@@ -108,75 +109,80 @@ int rc_auto_loop_callback_Controller1() {
     else
     {
       turnAxis *= 0.4;
-      int combinedSpeed = drivetrainLeftSideSpeed + drivetrainRightSideSpeed;
+      int combinedSpeed = leftWheelSpeed + rightWheelSpeed;
       // still
       if(combinedSpeed == 0)
       {
         if(turnAxis > 35 || turnAxis < -35)
         {
-          drivetrainRightSideSpeed = -turnAxis * 0.75;
-          drivetrainLeftSideSpeed = turnAxis * 0.75;
+          rightWheelSpeed = -turnAxis * 0.75;
+          leftWheelSpeed = turnAxis * 0.75;
         }
         else {
           if(turnAxis < 0) {
-            drivetrainRightSideSpeed = -turnAxis;
+            rightWheelSpeed = -turnAxis;
           }
           if(turnAxis > 0) {
-            drivetrainLeftSideSpeed = turnAxis;
+            leftWheelSpeed = turnAxis;
           }
         }
       }
       // going forwards
       else if(combinedSpeed > 0)
       {
-        drivetrainLeftSideSpeed += turnAxis;
+        leftWheelSpeed += turnAxis;
       }
       // going backwards
       else if(combinedSpeed < 0)
       {
-        drivetrainRightSideSpeed -= turnAxis;
+        rightWheelSpeed -= turnAxis;
       }
      }
     
     
     // TODO: rewrite drivetrain backend
     // check if the value is inside of the deadband range
-    if (drivetrainLeftSideSpeed < 1 && drivetrainLeftSideSpeed > -1) {
+    if(leftWheelSpeed < 1 && leftWheelSpeed > -1) {
       // check if the left motor has already been stopped
-      if (DrivetrainLNeedsToBeStopped_Controller1) {
+      if (stopLeft) {
         // stop the left drive motor
-        LeftDriveSmart.stop();
+        if(brakable) {
+          LeftDriveSmart.stop();
+        }
         // tell the code that the left motor has been stopped
-        DrivetrainLNeedsToBeStopped_Controller1 = false;
+        stopLeft = false;
       }
     } else {
       // reset the toggle so that the deadband code knows to stop the left motor next time the input is in the deadband range
-      DrivetrainLNeedsToBeStopped_Controller1 = true;
+      stopLeft = true;
     }
     // check if the value is inside of the deadband range
-    if (drivetrainRightSideSpeed < 1 && drivetrainRightSideSpeed > -1) {
+    if (rightWheelSpeed < 1 && rightWheelSpeed > -1) {
       // check if the right motor has already been stopped
-      if (DrivetrainRNeedsToBeStopped_Controller1) {
+      if (stopRight) {
         // stop the right drive motor
-        RightDriveSmart.stop();
+        if(brakable) {
+          RightDriveSmart.stop();
+        }
         // tell the code that the right motor has been stopped
-        DrivetrainRNeedsToBeStopped_Controller1 = false;
+        stopRight = false;
       }
     } else {
       // reset the toggle so that the deadband code knows to stop the right motor next time the input is in the deadband range
-      DrivetrainRNeedsToBeStopped_Controller1 = true;
+      stopRight = true;
     }
     // only tell the left drive motor to spin if the values are not in the deadband range
-    if (DrivetrainLNeedsToBeStopped_Controller1) {
-      LeftDriveSmart.setVelocity(drivetrainLeftSideSpeed, percent);
+    if (stopLeft) {
+      LeftDriveSmart.setVelocity(leftWheelSpeed, percent);
       LeftDriveSmart.spin(forward);
     }
     // only tell the right drive motor to spin if the values are not in the deadband range
-    if (DrivetrainRNeedsToBeStopped_Controller1) {
-      RightDriveSmart.setVelocity(drivetrainRightSideSpeed, percent);
+    if (stopRight) {
+      RightDriveSmart.setVelocity(rightWheelSpeed, percent);
       RightDriveSmart.spin(forward);
     }
-    // wait before repeating the process
+
+    // tick speed
     wait(1, msec);
   }
   return 0;
