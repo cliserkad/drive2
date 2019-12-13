@@ -34,17 +34,30 @@ int rc_auto_loop_callback_Controller1() {
   // process the controller input every 20 milliseconds
   // update the motors based on the input values
   while(true) {
+    if(Controller1.ButtonR1.pressing())
+    {
+      Drivetrain.setStopping(brake);
+    }
+    else if(Controller1.ButtonR2.pressing())
+    {
+      Drivetrain.setStopping(hold);
+    }
+    else
+    {
+      Drivetrain.setStopping(coast);
+    }
+
 
     // do claw manipulation
-    if(Controller1.ButtonL1.pressing() && Controller1.ButtonL2.pressing())
+    if(Controller1.ButtonRight.pressing() && Controller1.ButtonLeft.pressing())
     {
       Claw.stop();
     }
-    else if(Controller1.ButtonL1.pressing())
+    else if(Controller1.ButtonRight.pressing())
     {
       Claw.spin(forward);
     }
-    else if(Controller1.ButtonL2.pressing())
+    else if(Controller1.ButtonLeft.pressing())
     {
       Claw.spin(reverse);
     }
@@ -53,15 +66,15 @@ int rc_auto_loop_callback_Controller1() {
     }
 
     // do arm manipulation
-    if(Controller1.ButtonR1.pressing() && Controller1.ButtonR2.pressing())
+    if(Controller1.ButtonUp.pressing() && Controller1.ButtonDown.pressing())
     {
       Arm.stop();
     }
-    else if(Controller1.ButtonR1.pressing())
+    else if(Controller1.ButtonUp.pressing())
     {
       Arm.spin(forward);
     }
-    else if(Controller1.ButtonR2.pressing())
+    else if(Controller1.ButtonDown.pressing())
     {
       Arm.spin(reverse);
     }
@@ -69,8 +82,9 @@ int rc_auto_loop_callback_Controller1() {
       Arm.stop();
     }
 
-
-
+    int drivetrainLeftSideSpeed = 0;
+    int drivetrainRightSideSpeed = 0;
+    // if forwards / backwards is enabled
     // calculate the drivetrain motor velocities from the controller joystick axies
     // left = Axis3
     // right = Axis2
@@ -83,41 +97,49 @@ int rc_auto_loop_callback_Controller1() {
     x *= 0.8;
 
     // x = (0.2 * x) + (0.8 * (x * x));
-    int drivetrainLeftSideSpeed = x;
-    int drivetrainRightSideSpeed = x;
+    drivetrainLeftSideSpeed = x;
+    drivetrainRightSideSpeed = x;
+  
 
     // left side 
-    float turnAxis = Controller1.Axis4.position();
-    if(turnAxis > -1 && turnAxis < 1)
+    float turnAxis = Controller1.Axis1.position();
+    if(turnAxis > -0.3 && turnAxis < 0.3)
     {} // do nothing
     else
     {
       turnAxis *= 0.4;
-
       int combinedSpeed = drivetrainLeftSideSpeed + drivetrainRightSideSpeed;
-      
       // still
       if(combinedSpeed == 0)
       {
-        drivetrainLeftSideSpeed = turnAxis * 0.5;
-        drivetrainRightSideSpeed = turnAxis * -0.5;
+        if(turnAxis > 35 || turnAxis < -35)
+        {
+          drivetrainRightSideSpeed = -turnAxis * 0.75;
+          drivetrainLeftSideSpeed = turnAxis * 0.75;
+        }
+        else {
+          if(turnAxis < 0) {
+            drivetrainRightSideSpeed = -turnAxis;
+          }
+          if(turnAxis > 0) {
+            drivetrainLeftSideSpeed = turnAxis;
+          }
+        }
       }
-
       // going forwards
-      if(combinedSpeed > 0)
+      else if(combinedSpeed > 0)
       {
         drivetrainLeftSideSpeed += turnAxis;
       }
-
       // going backwards
-      if(combinedSpeed < 0)
+      else if(combinedSpeed < 0)
       {
         drivetrainRightSideSpeed -= turnAxis;
       }
-
      }
     
     
+    // TODO: rewrite drivetrain backend
     // check if the value is inside of the deadband range
     if (drivetrainLeftSideSpeed < 1 && drivetrainLeftSideSpeed > -1) {
       // check if the left motor has already been stopped
