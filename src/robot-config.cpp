@@ -19,8 +19,8 @@ controller Controller1 = controller(primary);
 
 // VEXcode generated functions
 // define variables used for controlling motors based on controller inputs
-bool stopLeft = true;
-bool stopRight = true;
+bool shouldSpinLeft = true;
+bool shouldSpinRight = true;
 
 bool brakable = false;
 bool subtractiveTurn = false;
@@ -33,90 +33,65 @@ int rc_auto_loop_callback_Controller1() {
   Arm.setStopping(hold);
   Arm.setVelocity(20, percent);
 
-  // process the controller input every 20 milliseconds
+  // process the controller input every 1 milliseconds
   // update the motors based on the input values
   while(true) {
     // dynamic braking types
     if(Controller1.ButtonR1.pressing())
-    {
       Drivetrain.setStopping(brake);
-      brakable = true;
-    }
-    else if(Controller1.ButtonR2.pressing())
-    {
-      Drivetrain.setStopping(hold);
-      brakable = true;
-    }
     else
-    {
       Drivetrain.setStopping(coast);
-      brakable = false;
-    }
+    brakable = Controller1.ButtonR1.pressing();
+
+    /* CLAW MANIPULATION */ //sclaw
+    if(Controller1.ButtonRight.pressing() && Controller1.ButtonLeft.pressing())
+      Claw.stop();
+    else if(Controller1.ButtonRight.pressing())
+      Claw.spin(forward);
+    else if(Controller1.ButtonLeft.pressing())
+      Claw.spin(reverse);
+    else
+      Claw.stop();
+
+    /* ARM MANIPULATION */ //sarm
+    if(Controller1.ButtonUp.pressing() && Controller1.ButtonDown.pressing())
+      Arm.stop();
+    else if(Controller1.ButtonUp.pressing())
+      Arm.spin(forward);
+    else if(Controller1.ButtonDown.pressing())
+      Arm.spin(reverse);
+    else
+      Arm.stop();
+
+    /* ACCELERATION / DECELERATION */ //sgo
+
+    float leftWheelSpeed = 0;
+    float rightWheelSpeed = 0;
+    // calculate the drivetrain motor velocities from the controller joystick axies
+    float x = Controller1.Axis3.position();
+    if(x > 0)
+      x -= 1;
+    else if(x < 0)
+      x += 1;
+    x *= 0.8;
+
+    leftWheelSpeed = x;
+    rightWheelSpeed = x;
+
+    /* TURNING */ //sturn
 
     // dynamic turning types
     if(Controller1.ButtonL1.pressing())
       subtractiveTurn = true;
     else
       subtractiveTurn = false;
-
-
-    // claw manipulation
-    if(Controller1.ButtonRight.pressing() && Controller1.ButtonLeft.pressing())
-    {
-      Claw.stop();
-    }
-    else if(Controller1.ButtonRight.pressing())
-    {
-      Claw.spin(forward);
-    }
-    else if(Controller1.ButtonLeft.pressing())
-    {
-      Claw.spin(reverse);
-    }
-    else {
-      Claw.stop();    
-    }
-
-    // arm manipulation
-    if(Controller1.ButtonUp.pressing() && Controller1.ButtonDown.pressing())
-    {
-      Arm.stop();
-    }
-    else if(Controller1.ButtonUp.pressing())
-    {
-      Arm.spin(forward);
-    }
-    else if(Controller1.ButtonDown.pressing())
-    {
-      Arm.spin(reverse);
-    }
-    else {
-      Arm.stop();
-    }
-
-    int leftWheelSpeed = 0;
-    int rightWheelSpeed = 0;
-    // calculate the drivetrain motor velocities from the controller joystick axies
-    int x = Controller1.Axis3.position();
-    if(x > 0){
-      x -= 1;
-    } else if(x < 0) {
-      x += 1;
-    }
-    x *= 0.8;
-
-    leftWheelSpeed = x;
-    rightWheelSpeed = x;
-  
-
-    // left side 
     float turnAxis = Controller1.Axis1.position();
     float turnAmount = fabsf(turnAxis) * 0.4;
     if(turnAxis > -0.3 && turnAxis < 0.3)
     {} // do nothing
     else
     {
-      int combinedSpeed = leftWheelSpeed + rightWheelSpeed;
+      float combinedSpeed = leftWheelSpeed + rightWheelSpeed;
       // still
       if(combinedSpeed == 0)
       {
@@ -176,53 +151,51 @@ int rc_auto_loop_callback_Controller1() {
             rightWheelSpeed -= turnAmount;
         }
       }
-     }
+    }
+
+    /* BACKEND STOP / WHEEL VELOCITY UPDATES */ // sback
     
-    
-    // TODO: rewrite drivetrain backend
     // check if the value is inside of the deadband range
     if(leftWheelSpeed < 1 && leftWheelSpeed > -1) {
       // check if the left motor has already been stopped
-      if (stopLeft) {
+      if(shouldSpinLeft) {
         // stop the left drive motor
-        if(brakable) {
+        if(brakable)
           LeftDriveSmart.stop();
-        }
-        else {
+        else
           LeftDriveSmart.setVelocity(0, percent);        
-        }
         // tell the code that the left motor has been stopped
-        stopLeft = false;
+        shouldSpinLeft = false;
       }
     } else {
       // reset the toggle so that the deadband code knows to stop the left motor next time the input is in the deadband range
-      stopLeft = true;
+      shouldSpinLeft = true;
     }
+
     // check if the value is inside of the deadband range
-    if (rightWheelSpeed < 1 && rightWheelSpeed > -1) {
+    if(rightWheelSpeed < 1 && rightWheelSpeed > -1) {
       // check if the right motor has already been stopped
-      if (stopRight) {
+      if(shouldSpinRight) {
         // stop the right drive motor
-        if(brakable) {
+        if(brakable)
           RightDriveSmart.stop();
-        }
-        else {
+        else
           RightDriveSmart.setVelocity(0, percent);
-        }
         // tell the code that the right motor has been stopped
-        stopRight = false;
+        shouldSpinRight = false;
       }
     } else {
       // reset the toggle so that the deadband code knows to stop the right motor next time the input is in the deadband range
-      stopRight = true;
+      shouldSpinRight = true;
     }
-    // only tell the left drive motor to spin if the values are not in the deadband range
-    if (stopLeft) {
+
+    // if intended speed of right wheel is without deadband
+    if(shouldSpinLeft) {
       LeftDriveSmart.setVelocity(leftWheelSpeed, percent);
       LeftDriveSmart.spin(forward);
     }
-    // only tell the right drive motor to spin if the values are not in the deadband range
-    if (stopRight) {
+    // if inteded speed of right wheel is without deadband
+    if(shouldSpinRight) {
       RightDriveSmart.setVelocity(rightWheelSpeed, percent);
       RightDriveSmart.spin(forward);
     }
