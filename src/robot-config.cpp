@@ -104,38 +104,58 @@ int rc_auto_loop_callback_Controller1() {
 
     // left side 
     float turnAxis = Controller1.Axis1.position();
+    float turnAmount = fabsf(turnAxis) * 0.4;
     if(turnAxis > -0.3 && turnAxis < 0.3)
     {} // do nothing
     else
     {
-      turnAxis *= 0.4;
       int combinedSpeed = leftWheelSpeed + rightWheelSpeed;
       // still
       if(combinedSpeed == 0)
       {
-        if(turnAxis > 35 || turnAxis < -35)
+        // max turning
+        if(turnAmount > 35)
         {
-          rightWheelSpeed = -turnAxis * 0.75;
-          leftWheelSpeed = turnAxis * 0.75;
+          // turning left
+          if(turnAxis > 0) {
+            rightWheelSpeed = -turnAmount * 0.75;
+            leftWheelSpeed = turnAmount * 0.75;
+          }
+          else {
+            rightWheelSpeed = turnAmount * 0.75;
+            leftWheelSpeed = -turnAmount * 0.75;
+          }
         }
         else {
           if(turnAxis < 0) {
-            rightWheelSpeed = -turnAxis;
+            rightWheelSpeed = turnAmount;
           }
           if(turnAxis > 0) {
-            leftWheelSpeed = turnAxis;
+            leftWheelSpeed = turnAmount;
           }
         }
       }
       // going forwards
       else if(combinedSpeed > 0)
       {
-        leftWheelSpeed += turnAxis;
+        // if turning left
+        if(turnAxis < 0) {
+          rightWheelSpeed += turnAmount;
+        }
+        else {
+          leftWheelSpeed += turnAmount;
+        }
       }
       // going backwards
       else if(combinedSpeed < 0)
       {
-        rightWheelSpeed -= turnAxis;
+        // if turning left
+        if(turnAxis < 0) {
+          rightWheelSpeed += turnAmount;
+        }
+        else {
+          leftWheelSpeed += turnAmount;
+        }
       }
      }
     
@@ -148,6 +168,9 @@ int rc_auto_loop_callback_Controller1() {
         // stop the left drive motor
         if(brakable) {
           LeftDriveSmart.stop();
+        }
+        else {
+          LeftDriveSmart.setVelocity(0, percent);        
         }
         // tell the code that the left motor has been stopped
         stopLeft = false;
@@ -163,6 +186,9 @@ int rc_auto_loop_callback_Controller1() {
         // stop the right drive motor
         if(brakable) {
           RightDriveSmart.stop();
+        }
+        else {
+          RightDriveSmart.setVelocity(0, percent);
         }
         // tell the code that the right motor has been stopped
         stopRight = false;
