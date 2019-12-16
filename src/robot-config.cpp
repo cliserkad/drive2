@@ -23,6 +23,7 @@ bool stopLeft = true;
 bool stopRight = true;
 
 bool brakable = false;
+bool subtractiveTurn = false;
 
 // define a task that will handle monitoring inputs from Controller1
 int rc_auto_loop_callback_Controller1() {
@@ -51,6 +52,12 @@ int rc_auto_loop_callback_Controller1() {
       Drivetrain.setStopping(coast);
       brakable = false;
     }
+
+    // dynamic turning types
+    if(Controller1.ButtonL1.pressing())
+      subtractiveTurn = true;
+    else
+      subtractiveTurn = false;
 
 
     // claw manipulation
@@ -140,10 +147,16 @@ int rc_auto_loop_callback_Controller1() {
       {
         // if turning left
         if(turnAxis < 0) {
-          rightWheelSpeed += turnAmount;
+          if(subtractiveTurn)
+            leftWheelSpeed -= turnAmount;
+          else
+            rightWheelSpeed += turnAmount;
         }
         else {
-          leftWheelSpeed += turnAmount;
+          if(subtractiveTurn)
+            rightWheelSpeed -= turnAmount;
+          else
+            leftWheelSpeed += turnAmount;
         }
       }
       // going backwards
@@ -151,10 +164,16 @@ int rc_auto_loop_callback_Controller1() {
       {
         // if turning left
         if(turnAxis < 0) {
-          rightWheelSpeed += turnAmount;
+          if(subtractiveTurn)
+            rightWheelSpeed += turnAmount;
+          else
+            leftWheelSpeed -= turnAmount;
         }
         else {
-          leftWheelSpeed += turnAmount;
+          if(subtractiveTurn)
+            leftWheelSpeed += turnAmount;
+          else
+            rightWheelSpeed -= turnAmount;
         }
       }
      }
