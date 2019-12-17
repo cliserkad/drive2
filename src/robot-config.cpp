@@ -24,6 +24,7 @@ bool shouldSpinRight = true;
 
 bool brakable = false;
 bool subtractiveTurn = false;
+bool tankControls = false;
 
 // define a task that will handle monitoring inputs from Controller1
 int rc_auto_loop_callback_Controller1() {
@@ -42,6 +43,8 @@ int rc_auto_loop_callback_Controller1() {
     else
       Drivetrain.setStopping(coast);
     brakable = Controller1.ButtonR1.pressing();
+
+    tankControls = Controller1.ButtonL2.pressing();
 
     /* CLAW MANIPULATION */ //sclaw
     if(Controller1.ButtonRight.pressing() && Controller1.ButtonLeft.pressing())
@@ -63,92 +66,96 @@ int rc_auto_loop_callback_Controller1() {
     else
       Arm.stop();
 
-    /* ACCELERATION / DECELERATION */ //sgo
-
     float leftWheelSpeed = 0;
     float rightWheelSpeed = 0;
-    // calculate the drivetrain motor velocities from the controller joystick axies
-    float x = Controller1.Axis3.position();
-    if(x > 0)
-      x -= 1;
-    else if(x < 0)
-      x += 1;
-    x *= 0.8;
+    /* TANK CONTROLS */ //stank
+    if(tankControls) {
+      leftWheelSpeed = Controller1.Axis3.position();
+      rightWheelSpeed = Controller1.Axis2.position();
+    }
+    else { /* CAR CONTROLS */ //scar
+      /* ACCELERATION / DECELERATION */ //sgo
 
-    leftWheelSpeed = x;
-    rightWheelSpeed = x;
+      // calculate the drivetrain motor velocities from the controller joystick axies
+      float x = Controller1.Axis3.position();
+      if(x > 0)
+        x -= 1;
+      else if(x < 0)
+        x += 1;
+      x *= 0.8;
 
-    /* TURNING */ //sturn
+      leftWheelSpeed = x;
+      rightWheelSpeed = x;
 
-    // dynamic turning types
-    if(Controller1.ButtonL1.pressing())
-      subtractiveTurn = true;
-    else
-      subtractiveTurn = false;
-    float turnAxis = Controller1.Axis1.position();
-    float turnAmount = fabsf(turnAxis) * 0.4;
-    if(turnAxis > -0.3 && turnAxis < 0.3)
-    {} // do nothing
-    else
-    {
-      float combinedSpeed = leftWheelSpeed + rightWheelSpeed;
-      // still
-      if(combinedSpeed == 0)
+      /* TURNING */ //sturn
+
+      // dynamic turning types
+      subtractiveTurn = Controller1.ButtonL1.pressing();
+      float turnAxis = Controller1.Axis1.position();
+      float turnAmount = fabsf(turnAxis) * 0.4;
+      if(turnAxis > -0.3 && turnAxis < 0.3)
+      {} // do nothing
+      else
       {
-        // max turning
-        if(turnAmount > 35)
+        float combinedSpeed = leftWheelSpeed + rightWheelSpeed;
+        // still
+        if(combinedSpeed == 0)
         {
-          // turning left
-          if(turnAxis > 0) {
-            rightWheelSpeed = -turnAmount * 0.75;
-            leftWheelSpeed = turnAmount * 0.75;
+          // max turning
+          if(turnAmount > 35)
+          {
+            // turning left
+            if(turnAxis > 0) {
+              rightWheelSpeed = -turnAmount * 0.75;
+              leftWheelSpeed = turnAmount * 0.75;
+            }
+            else {
+              rightWheelSpeed = turnAmount * 0.75;
+              leftWheelSpeed = -turnAmount * 0.75;
+            }
           }
           else {
-            rightWheelSpeed = turnAmount * 0.75;
-            leftWheelSpeed = -turnAmount * 0.75;
+            if(turnAxis < 0) {
+              rightWheelSpeed = turnAmount;
+            }
+            if(turnAxis > 0) {
+              leftWheelSpeed = turnAmount;
+            }
           }
         }
-        else {
+        // going forwards
+        else if(combinedSpeed > 0)
+        {
+          // if turning left
           if(turnAxis < 0) {
-            rightWheelSpeed = turnAmount;
+            if(subtractiveTurn)
+              leftWheelSpeed -= turnAmount;
+            else
+              rightWheelSpeed += turnAmount;
           }
-          if(turnAxis > 0) {
-            leftWheelSpeed = turnAmount;
+          else {
+            if(subtractiveTurn)
+              rightWheelSpeed -= turnAmount;
+            else
+              leftWheelSpeed += turnAmount;
           }
         }
-      }
-      // going forwards
-      else if(combinedSpeed > 0)
-      {
-        // if turning left
-        if(turnAxis < 0) {
-          if(subtractiveTurn)
-            leftWheelSpeed -= turnAmount;
-          else
-            rightWheelSpeed += turnAmount;
-        }
-        else {
-          if(subtractiveTurn)
-            rightWheelSpeed -= turnAmount;
-          else
-            leftWheelSpeed += turnAmount;
-        }
-      }
-      // going backwards
-      else if(combinedSpeed < 0)
-      {
-        // if turning left
-        if(turnAxis < 0) {
-          if(subtractiveTurn)
-            rightWheelSpeed += turnAmount;
-          else
-            leftWheelSpeed -= turnAmount;
-        }
-        else {
-          if(subtractiveTurn)
-            leftWheelSpeed += turnAmount;
-          else
-            rightWheelSpeed -= turnAmount;
+        // going backwards
+        else if(combinedSpeed < 0)
+        {
+          // if turning left
+          if(turnAxis < 0) {
+            if(subtractiveTurn)
+              rightWheelSpeed += turnAmount;
+            else
+              leftWheelSpeed -= turnAmount;
+          }
+          else {
+            if(subtractiveTurn)
+              leftWheelSpeed += turnAmount;
+            else
+              rightWheelSpeed -= turnAmount;
+          }
         }
       }
     }
