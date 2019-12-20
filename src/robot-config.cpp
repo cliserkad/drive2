@@ -25,6 +25,7 @@ bool shouldSpinRight = true;
 bool brakable = false;
 bool subtractiveTurn = false;
 bool tankControls = false;
+bool highSpeed = false;
 
 // define a task that will handle monitoring inputs from Controller1
 int rc_auto_loop_callback_Controller1() {
@@ -44,6 +45,8 @@ int rc_auto_loop_callback_Controller1() {
       Drivetrain.setStopping(coast);
     brakable = Controller1.ButtonR1.pressing();
 
+    // tank controls / high speed booleans
+    highSpeed = Controller1.ButtonR2.pressing();
     tankControls = Controller1.ButtonL2.pressing();
 
     /* CLAW MANIPULATION */ //sclaw
@@ -82,7 +85,8 @@ int rc_auto_loop_callback_Controller1() {
         x -= 1;
       else if(x < 0)
         x += 1;
-      x *= 0.8;
+      if(!highSpeed)
+        x *= 0.3;
 
       leftWheelSpeed = x;
       rightWheelSpeed = x;
@@ -90,7 +94,10 @@ int rc_auto_loop_callback_Controller1() {
       /* TURNING */ //sturn
 
       // dynamic turning types
-      subtractiveTurn = Controller1.ButtonL1.pressing();
+      if(highSpeed)
+        subtractiveTurn = true;
+      else
+        subtractiveTurn = !Controller1.ButtonL1.pressing();
       float turnAxis = Controller1.Axis1.position();
       float turnAmount = fabsf(turnAxis) * 0.4;
       if(turnAxis > -0.3 && turnAxis < 0.3)

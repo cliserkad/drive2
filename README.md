@@ -17,7 +17,7 @@ An improved driving program for the vex claw bot. Written in c++.
 | 🡆 | close claw |
 | axis 3 | acceleration |
 | axis 1 | turning |
-| L1 | use subtractive turning |
-| L2 | *nothing* |
-| R1 | use braking |
-| R2 | *nothing* |
+| L1 | additive turning |
+| L2 | tank controls |
+| R1 | braking |
+| R2 | highspeed |
